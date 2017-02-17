@@ -259,6 +259,59 @@ ggplot() +
 ################################################################
 ################################################################
 ################################################################
+################################################################
+################################################################
+################################################################
+
+
+
+
+resURL <- paste("http://api.census.gov/data/2015/acs1?get=NAME,B01001I_001E&for=congressional+district:*&key=",
+                key,sep="")
+latinos <- fromJSON(resURL)
+latinos <- latinos[2:length(latinos)]
+resURL <- paste("http://api.census.gov/data/2015/acs1?get=NAME,B01001_001E&for=congressional+district:*&key=",
+                key,sep="")
+pop <- fromJSON(resURL)
+pop <- pop[2:length(pop)]
+pop.L <- data.frame(name=unlist(lapply(pop,function(x){unlist(x)[1]})),
+                    pop=unlist(lapply(pop,function(x){unlist(x)[2]})),
+                    state=unlist(lapply(pop,function(x){unlist(x)[3]})),
+                    cd=unlist(lapply(pop,function(x){unlist(x)[4]})))
+
+latinos <- data.frame(name=unlist(lapply(latinos,function(x){unlist(x)[1]})),
+                      latino.pop=unlist(lapply(latinos,function(x){unlist(x)[2]})))
+
+pop.L <- pop.L %>% inner_join(latinos,by=c('name')) %>%
+            mutate(pct_latino=as.numeric(as.character(latino.pop))/
+                     as.numeric(as.character(pop)))
+
+house_election_2016 <- read.csv('data/congressionalelections2016.csv')
+
+state.codes <- read.csv('data/state_fips_codes.csv')
+names(state.codes) <- c('statename','state.num','state')
+
+votes <- house_election_2016 %>% 
+          inner_join(state.codes,by=c('state'))
+
+#fix pop.L congressional districts
+pop.L$cd <- as.numeric(as.character(pop.L$cd))
+pop.L$state <- as.numeric(as.character(pop.L$state))
+
+votes <- votes %>% select(state.num,cd,winning_party)
+names(votes) <- c('state','cd','party')
+
+votes <- votes %>% inner_join(pop.L,by=c('state','cd'))
+
+#order it by latino population and see if there are any notable 'R's
+votes %>% arrange(-pct_latino)
+################################################################
+################################################################
+################################################################
+################################################################
+################################################################
+################################################################
+
 #now try it with a base map
 
 #load the raster library
